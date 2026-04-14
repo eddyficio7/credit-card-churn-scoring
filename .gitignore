@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data and model artifacts
+data/raw/*
+data/processed/*
+models/*
+mlruns/
+mlartifacts/
+
+# Keep folder structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!models/.gitkeep
+
+# OS
+.DS_Store
+
+# DVC
+.dvc/cache/
