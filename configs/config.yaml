@@ -1,0 +1,18 @@
+project:
+  name: credit-card-churn-scoring
+  package_name: churn_scoring
+  version: 0.1.0
+
+data:
+  raw_path: data/raw/credit_card_customers.csv
+  processed_path: data/processed/credit_card_customers_processed.parquet
+  target_column: Attrition_Flag
+
+model:
+  random_state: 42
+  test_size: 0.2
+  scoring_metric: f1
+
+mlflow:
+  experiment_name: credit-card-churn-scoring
+  tracking_uri: mlruns
