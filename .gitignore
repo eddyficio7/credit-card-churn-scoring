@@ -34,3 +34,15 @@ mlartifacts/
 
 # DVC
 .dvc/cache/
+
+# Local / temporary
+.Rhistory
+
+# MLflow local artifacts
+mlflow.db
+mlruns/
+mlruns_clean/
+
+# Screenshots / notebook images
+notebooks/*.png
+notebooks/Captura de pantalla*.png
