@@ -4,14 +4,16 @@ project:
   version: 0.1.0
 
 data:
-  raw_path: data/raw/credit_card_customers.csv
-  processed_path: data/processed/credit_card_customers_processed.parquet
+  raw_path: data/raw/BankChurners.csv
+  interim_path: data/interim/churn_base.parquet
+  validated_path: data/processed/churn_validated.parquet
   target_column: Attrition_Flag
 
 model:
   random_state: 42
   test_size: 0.2
   scoring_metric: f1
+  sklearn_model_path: models/gradient_boosting_tuned_pipeline.joblib
 
 mlflow:
   experiment_name: credit-card-churn-scoring

@@ -27,5 +27,5 @@ def test_get_settings_returns_default_paths() -> None:
     settings = get_settings()
 
     assert settings.environment == "development"
-    assert settings.data_raw_path == Path("data/raw/credit_card_customers.csv")
+    assert settings.data_raw_path == Path("data/raw/BankChurners.csv")
     assert settings.model_dir == Path("models")
