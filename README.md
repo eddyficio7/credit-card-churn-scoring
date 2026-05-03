@@ -9,7 +9,7 @@ El proyecto forma parte del **Proyecto Final del Módulo 1** del diplomado **Art
 ## Autor
 
 **Edd**
-GitHub: `<tu_usuario_github>`
+GitHub: `<eddyficio7>`
 
 ---
 
