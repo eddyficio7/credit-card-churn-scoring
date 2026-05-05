@@ -13,7 +13,9 @@ model:
   random_state: 42
   test_size: 0.2
   scoring_metric: f1
-  sklearn_model_path: models/gradient_boosting_tuned_pipeline.joblib
+  sklearn_model_path: models/gradient_boosting_tuned_pipeline.jobli
+  pytorch_model_path: models/churn_mlp_state_dict.pt
+  pytorch_preprocessor_path: models/pytorch_preprocessor.joblib
 
 mlflow:
   experiment_name: credit-card-churn-scoring

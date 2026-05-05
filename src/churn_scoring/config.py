@@ -35,6 +35,15 @@ class Settings(BaseSettings):
         alias="SKLEARN_MODEL_PATH",
     )
 
+    pytorch_model_path: Path = Field(
+        default=Path("models/churn_mlp_state_dict.pt"),
+        alias="PYTORCH_MODEL_PATH",
+    )
+    pytorch_preprocessor_path: Path = Field(
+        default=Path("models/pytorch_preprocessor.joblib"),
+        alias="PYTORCH_PREPROCESSOR_PATH",
+    )
+
     target_column: str = Field(default="Attrition_Flag", alias="TARGET_COLUMN")
     random_state: int = Field(default=42, alias="RANDOM_STATE")
     test_size: float = Field(default=0.2, alias="TEST_SIZE")
