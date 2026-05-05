@@ -1,10 +1,13 @@
 """Aplicación Streamlit para predicción de churn de clientes."""
 
+import joblib
+import pandas as pd
 import streamlit as st
 
 from churn_scoring.app.inference import CustomerInput, predict_customer_churn
 from churn_scoring.config import get_settings
 from churn_scoring.models.sklearn_model import SklearnChurnModel
+from churn_scoring.models.torch_model import TorchChurnModel
 
 EDUCATION_LEVELS = [
     "Graduate",
@@ -42,7 +45,7 @@ CARD_CATEGORIES = [
 
 @st.cache_resource
 def load_churn_model(model_path: str) -> SklearnChurnModel:
-    """Carga el modelo de churn desde un artefacto joblib.
+    """Carga el modelo champion de churn desde un artefacto joblib.
 
     Parameters
     ----------
@@ -52,9 +55,43 @@ def load_churn_model(model_path: str) -> SklearnChurnModel:
     Returns
     -------
     SklearnChurnModel
-        Modelo listo para inferencia.
+        Modelo scikit-learn listo para inferencia.
     """
     return SklearnChurnModel(model_path)
+
+
+@st.cache_resource
+def load_pytorch_churn_model(
+    model_path: str,
+    preprocessor_path: str,
+) -> TorchChurnModel:
+    """Carga el modelo PyTorch de churn junto con su preprocesador.
+
+    Parameters
+    ----------
+    model_path : str
+        Ruta del checkpoint ``.pt`` con los pesos del modelo.
+    preprocessor_path : str
+        Ruta del preprocesador serializado con joblib.
+
+    Returns
+    -------
+    TorchChurnModel
+        Modelo PyTorch listo para inferencia.
+    """
+    preprocessor = joblib.load(preprocessor_path)
+    input_dim = len(preprocessor.get_feature_names_out())
+
+    return TorchChurnModel.from_state_dict(
+        model_path,
+        input_dim=input_dim,
+        feature_columns=[],
+        hidden_dims=(64, 32),
+        dropout=0.2,
+        output_dim=2,
+        device="cpu",
+        preprocessor=preprocessor,
+    )
 
 
 def build_sidebar_input() -> CustomerInput:
@@ -192,7 +229,7 @@ def render_prediction_result(
     risk_level: str,
     recommendation: str,
 ) -> None:
-    """Muestra el resultado de predicción en la aplicación.
+    """Muestra el resultado principal de predicción en la aplicación.
 
     Parameters
     ----------
@@ -225,11 +262,71 @@ def render_prediction_result(
     st.info(recommendation)
 
 
+def render_model_comparison(
+    sklearn_probability: float,
+    sklearn_risk_level: str,
+    pytorch_probability: float,
+    pytorch_risk_level: str,
+) -> None:
+    """Muestra una comparación experimental entre modelos.
+
+    Parameters
+    ----------
+    sklearn_probability : float
+        Probabilidad de churn estimada por Gradient Boosting.
+    sklearn_risk_level : str
+        Nivel de riesgo estimado por Gradient Boosting.
+    pytorch_probability : float
+        Probabilidad de churn estimada por PyTorch MLP.
+    pytorch_risk_level : str
+        Nivel de riesgo estimado por PyTorch MLP.
+    """
+    comparison_df = pd.DataFrame(
+        {
+            "Modelo": ["Gradient Boosting", "PyTorch MLP"],
+            "Rol": ["Champion", "Challenger"],
+            "Probabilidad de churn": [
+                f"{sklearn_probability * 100:.2f}%",
+                f"{pytorch_probability * 100:.2f}%",
+            ],
+            "Nivel de riesgo": [
+                sklearn_risk_level,
+                pytorch_risk_level,
+            ],
+        }
+    )
+
+    st.dataframe(comparison_df, use_container_width=True)
+
+    chart_df = pd.DataFrame(
+        {
+            "Modelo": ["Gradient Boosting", "PyTorch MLP"],
+            "Probabilidad de churn": [
+                sklearn_probability,
+                pytorch_probability,
+            ],
+        }
+    ).set_index("Modelo")
+
+    st.bar_chart(chart_df)
+
+    probability_gap = abs(sklearn_probability - pytorch_probability)
+
+    if probability_gap <= 0.10:
+        st.success("Ambos modelos muestran una estimación similar de riesgo de churn.")
+    else:
+        st.warning(
+            "Los modelos presentan diferencias relevantes. Esto puede ocurrir "
+            "porque las probabilidades no necesariamente están calibradas de la "
+            "misma forma entre Gradient Boosting y PyTorch MLP."
+        )
+
+
 def main() -> None:
     """Ejecuta la aplicación principal de Streamlit."""
     st.set_page_config(
         page_title="Credit Card Churn Scoring",
-        page_icon="💳",
+        page_icon="",
         layout="wide",
     )
 
@@ -237,40 +334,83 @@ def main() -> None:
     st.write(
         """
         Esta aplicación estima la probabilidad de churn de un cliente de tarjeta
-        de crédito usando un pipeline de Machine Learning entrenado con
-        scikit-learn.
+        de crédito. El resultado principal se basa en un modelo
+        **Gradient Boosting Tuned Pipeline**, considerado como modelo champion.
+        Además, se muestra una comparación experimental contra un modelo
+        **PyTorch MLP**.
         """
     )
 
     settings = get_settings()
-    model = load_churn_model(str(settings.sklearn_model_path))
+
+    sklearn_model = load_churn_model(str(settings.sklearn_model_path))
+    pytorch_model = load_pytorch_churn_model(
+        str(settings.pytorch_model_path),
+        str(settings.pytorch_preprocessor_path),
+    )
+
     customer_input = build_sidebar_input()
 
     st.subheader("Cliente capturado")
     st.dataframe(customer_input.to_model_dataframe(), use_container_width=True)
 
     if st.button("Calcular score de churn", type="primary"):
-        prediction = predict_customer_churn(model, customer_input)
+        sklearn_prediction = predict_customer_churn(
+            sklearn_model,
+            customer_input,
+        )
+        pytorch_prediction = predict_customer_churn(
+            pytorch_model,
+            customer_input,
+        )
+
+        st.subheader("Resultado principal: Gradient Boosting Champion")
 
         render_prediction_result(
-            churn_probability=prediction.churn_probability,
-            prediction=prediction.prediction,
-            risk_level=prediction.risk_level,
-            recommendation=prediction.recommendation,
+            churn_probability=sklearn_prediction.churn_probability,
+            prediction=sklearn_prediction.prediction,
+            risk_level=sklearn_prediction.risk_level,
+            recommendation=sklearn_prediction.recommendation,
         )
+
+        with st.expander("Comparación experimental con PyTorch MLP"):
+            st.write(
+                """
+                El modelo **Gradient Boosting** se considera el modelo champion
+                actual porque obtuvo mejor desempeño en las métricas de
+                evaluación.
+
+                El modelo **PyTorch MLP** se muestra como challenger para
+                comparar un enfoque de red neuronal contra el pipeline clásico.
+                Las probabilidades entre modelos pueden diferir porque no
+                necesariamente están calibradas de la misma forma.
+                """
+            )
+
+            render_model_comparison(
+                sklearn_probability=sklearn_prediction.churn_probability,
+                sklearn_risk_level=sklearn_prediction.risk_level,
+                pytorch_probability=pytorch_prediction.churn_probability,
+                pytorch_risk_level=pytorch_prediction.risk_level,
+            )
 
     st.divider()
 
-    st.subheader("Modelo utilizado")
+    st.subheader("Modelos utilizados")
     st.write(
         """
-        Modelo champion actual: **Gradient Boosting Tuned Pipeline**.
-        El pipeline incluye preprocesamiento, codificación de variables
-        categóricas y modelo final serializado con joblib.
+        La decisión principal de la aplicación se basa en el modelo
+        **Gradient Boosting Tuned Pipeline**, considerado como modelo champion.
+
+        El modelo **PyTorch MLP** se incluye como challenger para mostrar una
+        comparación entre un enfoque clásico de machine learning y una red
+        neuronal.
         """
     )
 
-    st.caption(f"Artefacto cargado desde: `{settings.sklearn_model_path}`")
+    st.caption(f"Modelo scikit-learn: `{settings.sklearn_model_path}`")
+    st.caption(f"Modelo PyTorch: `{settings.pytorch_model_path}`")
+    st.caption(f"Preprocesador PyTorch: `{settings.pytorch_preprocessor_path}`")
 
 
 if __name__ == "__main__":
