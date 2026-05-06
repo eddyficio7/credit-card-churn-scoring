@@ -17,16 +17,29 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data and model artifacts
+# Data artifacts
 data/raw/*
+data/interim/*
 data/processed/*
-models/*
-mlruns/
-mlartifacts/
 
-# Keep folder structure
+# Keep data directories and DVC metadata
+!data/
+!data/raw/
+!data/interim/
+!data/processed/
+!data/raw/*.dvc
+!data/interim/*.dvc
+!data/processed/*.dvc
 !data/raw/.gitkeep
+!data/interim/.gitkeep
 !data/processed/.gitkeep
+
+# Model artifacts
+models/*
+
+# Keep model directory and DVC metadata
+!models/
+!models/*.dvc
 !models/.gitkeep
 
 # OS

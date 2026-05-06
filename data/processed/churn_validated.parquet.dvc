@@ -1,0 +1,5 @@
+outs:
+- md5: 7ca410be2e4a30b4f53ac11f4ff50488
+  size: 362727
+  hash: md5
+  path: churn_validated.parquet

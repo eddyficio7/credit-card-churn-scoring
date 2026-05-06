@@ -1,0 +1,5 @@
+outs:
+- md5: ceb5c8301890ee5e00acb2119b2be6e5
+  size: 5064
+  hash: md5
+  path: pytorch_preprocessor.joblib
